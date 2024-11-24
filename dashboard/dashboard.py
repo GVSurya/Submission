@@ -1,7 +1,6 @@
 import streamlit as st  # Mengimpor Streamlit untuk membangun aplikasi web
 import pandas as pd  # Mengimpor pandas untuk manipulasi data
 import matplotlib.pyplot as plt  # Mengimpor matplotlib untuk pembuatan grafik
-import folium  # Digunakan untuk membuat peta interaktif
 import seaborn as sns  # Mengimpor seaborn untuk visualisasi yang lebih baik
 
 # Mendefinisikan path file data untuk file hour.csv dan day.csv
