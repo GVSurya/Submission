@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt  # Mengimpor matplotlib untuk pembuatan grafik
 import seaborn as sns  # Mengimpor seaborn untuk visualisasi yang lebih baik
 
 # Mendefinisikan path file data untuk file hour.csv dan day.csv
-hour_data_path = 'hour.csv'
-day_data_path = 'day.csv'
+hour_data_path = 'dashboard/hour.csv'
+day_data_path = 'dashboard/day.csv'
 
 # Fungsi untuk memuat data dari file CSV
 def load_data():
