@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt  # Mengimpor matplotlib untuk pembuatan grafik
 import seaborn as sns  # Mengimpor seaborn untuk visualisasi yang lebih baik
 
 # Mendefinisikan path file data untuk file hour.csv dan day.csv
-hour_data_path = 'dashboard/hour.csv'
-day_data_path = 'dashboard/day.csv'
+hour_data_path = 'hour.csv'
+day_data_path = 'day.csv'
 
 # Fungsi untuk memuat data dari file CSV
 def load_data():
@@ -13,27 +13,40 @@ def load_data():
     day_data = pd.read_csv(day_data_path)  # Membaca data dari 'day.csv'
     return hour_data, day_data  # Mengembalikan kedua data
 
+# Fungsi untuk memfilter data berdasarkan rentang tanggal
+def date_filter(data):
+    data['dteday'] = pd.to_datetime(data['dteday'])  # Mengonversi kolom 'dteday' menjadi format datetime
+    start_date = st.date_input("Pilih Tanggal Mulai", data['dteday'].min().date())  # Input tanggal mulai
+    end_date = st.date_input("Pilih Tanggal Akhir", data['dteday'].max().date())  # Input tanggal akhir
+    filtered_data = data[(data['dteday'] >= pd.to_datetime(start_date)) & (data['dteday'] <= pd.to_datetime(end_date))]  # Filter data sesuai tanggal
+    return filtered_data  # Mengembalikan data yang sudah difilter
+
 # Fungsi untuk membuat visualisasi berdasarkan musim dan kondisi cuaca
 def plot_usage_by_season_weather(data):
-    data['cnt'] = pd.to_numeric(data['cnt'], errors='coerce')  # Mengubah kolom 'cnt' menjadi tipe numerik
-    if data['cnt'].isnull().any():  # Memeriksa jika ada nilai yang hilang
-        st.warning("Data 'cnt' mengandung nilai yang hilang. Mengisi nilai yang hilang dengan 0.")  # Peringatan jika ada data yang hilang
-        data['cnt'] = data['cnt'].fillna(0)  # Mengisi nilai yang hilang dengan 0
-    season_dict = {1: 'Winter', 2: 'Spring', 3: 'Summer', 4: 'Fall'}  # Pemetaan angka ke musim
-    weather_dict = {1: 'Clear', 2: 'Mist + Cloudy', 3: 'Light Snow/Rain', 4: 'Heavy Rain/Snow'}  # Pemetaan angka ke kondisi cuaca
-    data['season'] = data['season'].map(season_dict)  # Mengubah angka musim menjadi nama musim
-    data['weathersit'] = data['weathersit'].map(weather_dict)  # Mengubah angka cuaca menjadi nama cuaca
-    season_weather_counts = data.groupby(['season', 'weathersit'])['cnt'].sum().unstack()  # Mengelompokkan data dan menghitung total penyewaan berdasarkan musim dan cuaca
-    if season_weather_counts.isnull().all().all():  # Memeriksa apakah ada data yang bisa dipetakan
-        st.warning("Tidak ada data untuk dipetakan. Pastikan data valid.")  # Peringatan jika tidak ada data yang dapat dipetakan
-        return
-    # Membuat grafik batang untuk visualisasi
-    season_weather_counts.plot(kind='bar', stacked=True, figsize=(10, 6), color=['skyblue', 'lightcoral', 'orange', 'lightgreen'])
-    plt.title('Pola Penggunaan Sepeda Berdasarkan Musim dan Kondisi Cuaca')  # Menambahkan judul grafik
-    plt.xlabel('Musim')  # Menambahkan label sumbu X
-    plt.ylabel('Jumlah Penyewaan')  # Menambahkan label sumbu Y
-    plt.xticks(rotation=45)  # Memutar label sumbu X agar tidak saling tumpang tindih
-    st.pyplot(plt)  # Menampilkan grafik
+    # Mengelompokkan data berdasarkan musim (season) dan kondisi cuaca (weathersit), lalu menjumlahkan total penggunaan sepeda (cnt)
+    season_weather_usage = data.groupby(['season', 'weathersit'])['cnt'].sum().reset_index()
+
+    # Membuat figure (area plot) dengan ukuran 10x6 inci.
+    plt.figure(figsize=(10,6))
+
+    # Membuat bar plot menggunakan seaborn
+    sns.barplot(x='season', y='cnt', hue='weathersit', data=season_weather_usage, palette="viridis")
+
+    # Menambahkan judul plot
+    plt.title("Pola Penggunaan Sepeda Berdasarkan Musim dan Kondisi Cuaca")
+
+    # Menambahkan label sumbu x
+    plt.xlabel("Season")
+
+    # Menambahkan label sumbu y
+    plt.ylabel("Jumlah Penggunaan Sepeda")
+
+    # Menambahkan legend (keterangan)
+    plt.legend(title="Kondisi Cuaca", loc='upper left')
+
+    # Menampilkan plot
+    st.pyplot(plt)
+
 
 # Fungsi untuk membuat visualisasi jumlah penyewaan sepeda per jam
 def plot_by_hour(data):
@@ -68,19 +81,36 @@ def plot_by_day_type(data):
 
 # Fungsi untuk membandingkan penggunaan sepeda antara pengguna terdaftar dan kasual berdasarkan jenis hari
 def plot_usage_by_user_type_and_day_type(data):
-    # Menentukan jenis hari (Weekend atau Workingday)
-    data['day_type'] = data.apply(lambda row: 'Weekend' if row['workingday'] == 0 else 'Workingday', axis=1)
-    user_type_day_counts = data.groupby(['day_type'])[['casual', 'registered']].sum()  # Mengelompokkan berdasarkan jenis hari dan menghitung jumlah penyewaan oleh pengguna kasual dan terdaftar
-    if user_type_day_counts.empty:  # Memeriksa apakah ada data untuk plot
-        st.warning("Tidak ada data untuk plot perbandingan penggunaan sepeda.")  # Peringatan jika tidak ada data
-        return
-    # Membuat grafik batang untuk perbandingan antara pengguna kasual dan terdaftar
-    user_type_day_counts.plot(kind='bar', stacked=True, figsize=(10, 6), color=['skyblue', 'lightcoral'])
-    plt.title('Perbandingan Penggunaan Sepeda: Pengguna Terdaftar vs Kasual per Jenis Hari')  # Menambahkan judul grafik
-    plt.xlabel('Jenis Hari')  # Menambahkan label sumbu X
-    plt.ylabel('Jumlah Penyewaan')  # Menambahkan label sumbu Y
-    plt.xticks(rotation=0)  # Memutar label sumbu X agar tidak saling tumpang tindih
-    st.pyplot(plt)  # Menampilkan grafik
+    # Menentukan jenis hari berdasarkan kolom 'workingday'
+    data['is_working_day'] = data['workingday'].apply(lambda x: 'Weekday' if x == 1 else 'Weekend')
+
+    # Mengelompokkan data berdasarkan jenis hari, pengguna kasual dan terdaftar
+    usage_by_day_type = data.groupby(['is_working_day', 'casual', 'registered'])['cnt'].sum().reset_index()
+
+    # Mengubah format data untuk visualisasi
+    usage_by_day_type = usage_by_day_type.melt(id_vars=['is_working_day'], value_vars=['casual', 'registered'], 
+                                               var_name='user_type', value_name='usage_count')
+
+    # Membuat figure (bar plot) dengan ukuran 12x6 inci
+    plt.figure(figsize=(12, 6))
+
+    # Membuat bar plot menggunakan seaborn
+    sns.barplot(x='is_working_day', y='usage_count', hue='user_type', data=usage_by_day_type, palette='muted')
+
+    # Menambahkan judul plot
+    plt.title('Perbandingan Penggunaan Sepeda: Pengguna Terdaftar vs Kasual per Jenis Hari')
+
+    # Menambahkan label sumbu x
+    plt.xlabel('Jenis Hari (Hari Kerja vs Akhir Pekan)')
+
+    # Menambahkan label sumbu y
+    plt.ylabel('Jumlah Penggunaan Sepeda')
+
+    # Menambahkan legend
+    plt.legend(title='Jenis Pengguna', loc='upper left')
+
+    # Menampilkan plot
+    st.pyplot(plt)
 
 # Fungsi untuk melakukan RFM Analysis (Recency, Frequency, Monetary)
 def rfm_analysis(data):
@@ -89,28 +119,25 @@ def rfm_analysis(data):
     data['Recency'] = (today - data['dteday']).dt.days  # Menghitung Recency (hari sejak penyewaan terakhir)
     frequency = data.groupby('casual')['cnt'].count()  # Menghitung jumlah penyewaan per pengguna kasual
     monetary = data.groupby('casual')['cnt'].sum()  # Menghitung total penyewaan per pengguna kasual
+
     # Membuat DataFrame untuk RFM Analysis
     rfm_df = pd.DataFrame({
         'Recency': data.groupby('casual')['Recency'].min(),  # Mengambil nilai Recency untuk setiap pengguna kasual
         'Frequency': frequency,  # Mengambil nilai Frequency untuk setiap pengguna kasual
         'Monetary': monetary  # Mengambil nilai Monetary untuk setiap pengguna kasual
     }).reset_index()  # Reset index untuk DataFrame yang lebih rapi
-    st.header("RFM Analysis")  # Menambahkan header RFM Analysis
+    
+    # Menampilkan RFM Analysis
+    st.header("RFM Analysis")
     st.dataframe(rfm_df)  # Menampilkan DataFrame RFM Analysis
-    fig, ax = plt.subplots(figsize=(10, 6))  # Membuat grafik scatter
-    ax.scatter(rfm_df['Recency'], rfm_df['Frequency'], c=rfm_df['Monetary'], cmap='viridis')  # Scatter plot RFM (Recency vs Frequency)
+    
+    # Membuat scatter plot untuk RFM Analysis (Recency vs Frequency)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.scatter(rfm_df['Recency'], rfm_df['Frequency'], c=rfm_df['Monetary'], cmap='viridis')
     ax.set_title("RFM Analysis (Recency vs Frequency)")  # Menambahkan judul grafik
     ax.set_xlabel('Recency (Days Since Last Rental)')  # Menambahkan label sumbu X
     ax.set_ylabel('Frequency (Number of Rentals)')  # Menambahkan label sumbu Y
     st.pyplot(fig)  # Menampilkan grafik
-
-# Fungsi untuk memfilter data berdasarkan rentang tanggal
-def date_filter(data):
-    data['dteday'] = pd.to_datetime(data['dteday'])  # Mengonversi kolom 'dteday' menjadi format datetime
-    start_date = st.date_input("Pilih Tanggal Mulai", data['dteday'].min().date())  # Input tanggal mulai
-    end_date = st.date_input("Pilih Tanggal Akhir", data['dteday'].max().date())  # Input tanggal akhir
-    filtered_data = data[(data['dteday'] >= pd.to_datetime(start_date)) & (data['dteday'] <= pd.to_datetime(end_date))]  # Filter data sesuai tanggal
-    return filtered_data  # Mengembalikan data yang sudah difilter
 
 # Memuat data dari kedua file CSV
 hour_data, day_data = load_data()
@@ -118,32 +145,26 @@ hour_data, day_data = load_data()
 st.title('Visualisasi Data Penyewaan Sepeda')  # Menambahkan judul aplikasi
 
 # Pilihan untuk memilih antara data per jam atau per hari
-data_type = st.radio("Pilih Tipe Data", ("Hour Data", "Day Data"))
+option = st.selectbox("Pilih Data untuk Visualisasi", ["Hour Data", "Day Data"])
 
-# Kondisi untuk menampilkan visualisasi dan analisis berdasarkan data yang dipilih
-if data_type == "Day Data":
-    filtered_data = date_filter(day_data)  # Menggunakan data harian yang sudah difilter
-    st.header("Tabel Data Penyewaan Sepeda (Day Data) - Filtered")  # Menambahkan header tabel data
-    st.dataframe(filtered_data)  # Menampilkan tabel data
-    col1, col2 = st.columns(2)  # Membuat dua kolom untuk menampilkan grafik
-    with col1:
-        st.header("Pola Penggunaan Sepeda Berdasarkan Musim dan Kondisi Cuaca")
-        plot_usage_by_season_weather(filtered_data)  # Menampilkan grafik pola penggunaan sepeda berdasarkan musim dan cuaca
-    with col2:
-        st.header("Perbandingan Penggunaan Sepeda: Pengguna Terdaftar vs Kasual per Jenis Hari")
-        plot_usage_by_user_type_and_day_type(filtered_data)  # Menampilkan grafik perbandingan pengguna sepeda
-    st.header("Analisis Lanjutan")  # Menambahkan header analisis lanjutan
-    st.subheader("RFM Analysis")  # Menambahkan subheader RFM Analysis
-    rfm_analysis(filtered_data)  # Menampilkan hasil RFM Analysis
+# Memilih data berdasarkan input pengguna
+if option == "Hour Data":
+    # Memilih dan menampilkan visualisasi berdasarkan data per jam
+    filtered_hour_data = date_filter(hour_data)
+    st.header("Tabel Data Penyewaan Sepeda (Hour Data) - Filtered")
+    st.dataframe(filtered_hour_data)  # Menampilkan tabel data per jam yang sudah difilter
+    plot_by_hour(filtered_hour_data)
+    plot_usage_by_season_weather(filtered_hour_data)
+    plot_usage_by_user_type_and_day_type(filtered_hour_data)
+elif option == "Day Data":
+    # Memilih dan menampilkan visualisasi berdasarkan data per hari
+    filtered_day_data = date_filter(day_data)
+    st.header("Tabel Data Penyewaan Sepeda (Day Data) - Filtered")
+    st.dataframe(filtered_day_data)  # Menampilkan tabel data per hari yang sudah difilter
+    plot_by_day_type(filtered_day_data)
+    plot_usage_by_season_weather(filtered_day_data)
+    plot_usage_by_user_type_and_day_type(filtered_day_data)
 
-elif data_type == "Hour Data":
-    filtered_data = date_filter(hour_data)  # Menggunakan data per jam yang sudah difilter
-    st.header("Tabel Data Penyewaan Sepeda (Hour Data) - Filtered")  # Menambahkan header tabel data
-    st.dataframe(filtered_data)  # Menampilkan tabel data
-    col1, col2 = st.columns(2)  # Membuat dua kolom untuk menampilkan grafik
-    with col1:
-        st.header("Jumlah Penyewaan per Jam")
-        plot_by_hour(filtered_data)  # Menampilkan grafik jumlah penyewaan per jam
-    with col2:
-        st.header("Jumlah Penyewaan Berdasarkan Jenis Hari")
-        plot_by_day_type(filtered_data)  # Menampilkan grafik jumlah penyewaan berdasarkan jenis hari
+# Menambahkan RFM Analysis
+rfm_analysis(hour_data)  # Melakukan RFM Analysis pada data per jam
+
